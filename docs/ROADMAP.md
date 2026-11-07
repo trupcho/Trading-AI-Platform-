@@ -6,7 +6,7 @@
 - [x] MQL5 EA source with conservative demo checks; compiler verification pending
 - [x] Research-only TradingAgents adapter
 - [x] Python unit tests and CI
-- [x] User created GitHub repository; source import pending verification
+- [x] User created GitHub repository; source files imported and verified on main
 - [ ] Change repository visibility to private (current repository was public at import)
 - [ ] Connect actual broker Demo and confirm symbol specs
 - [ ] Compile MQL5 source in MetaEditor and debug any broker-specific details
