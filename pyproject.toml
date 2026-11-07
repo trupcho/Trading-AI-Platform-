@@ -11,10 +11,13 @@ dependencies = []
 
 [project.optional-dependencies]
 ai = ["tradingagents"]
+mt5 = ["MetaTrader5"]
 
 [project.scripts]
 trading-ai-gateway = "trading_ai.gateway:main"
 trading-ai-research = "trading_ai.research:main"
+trading-ai-mt5-readiness = "trading_ai.mt5_readiness:main"
+trading-ai-agent-review = "trading_ai.agent_bridge:main"
 
 [tool.setuptools.packages.find]
 include = ["trading_ai*"]
