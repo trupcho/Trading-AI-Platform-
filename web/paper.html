@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b111b"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Trading AI">
+<link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-180.png">
+<title>Trading AI • Gold Paper Lab</title>
+<style>
+:root{color-scheme:dark;--bg:#080d16;--panel:#141e2d;--muted:#a4b3c6;--gold:#e5bc73;--line:#334257;--green:#70ddb8;--red:#ff9999;font-family:-apple-system,BlinkMacSystemFont,Inter,"Segoe UI",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -15%,#20334c,var(--bg) 55%);color:#f6f7fb}
+main{max-width:760px;margin:auto;padding:20px 15px 65px}h1{font-size:32px;letter-spacing:-.04em;margin:17px 0 9px}h2{font-size:18px;margin:0 0 16px}
+p{color:var(--muted);line-height:1.55;font-size:14px}small,.small{font-size:12px;color:var(--muted)}
+a{color:var(--gold)}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800;letter-spacing:.08em}.brand img{width:44px;border-radius:12px}
+.pill{color:var(--gold);font-size:10px;border:1px solid #886b41;border-radius:30px;padding:8px;letter-spacing:.09em;white-space:nowrap;font-weight:bold}
+.banner{background:#281e19;color:#f5d2a2;border:1px solid #8b633e;padding:13px 14px;border-radius:14px;font-size:13px;line-height:1.55;margin:18px 0}
+.panels{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.card{border:1px solid var(--line);background:var(--panel);border-radius:18px;padding:17px}
+.wide{grid-column:1/-1}.label{font-size:12px;color:var(--muted)}.value{font-size:29px;font-weight:800;letter-spacing:-.04em;margin:5px 0}
+.gold{color:var(--gold)}.green{color:var(--green)}.red{color:var(--red)}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+button{padding:14px 10px;border:1px solid #716145;background:#624f31;color:#fff9eb;font-weight:700;border-radius:13px;font-size:15px;min-height:48px}
+button:disabled{opacity:.45}button.secondary{background:#172539;border-color:#536780}button.danger{background:#422b32;border-color:#7a4851}
+button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:9px}
+.stat{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #2c384a;font-size:14px}
+.stat:last-child{border:0}.chart{width:100%;height:130px;display:block}.linkback{display:inline-block;margin:16px 0 5px;text-decoration:none}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}th,td{text-align:left;padding:10px 3px;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:500}td:last-child,th:last-child{text-align:right}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}.actions button{padding:10px 12px;min-height:38px;font-size:12px}
+footer{margin:30px 0;color:var(--muted);font-size:12px;line-height:1.6}
+@media(min-width:560px){.panels{grid-template-columns:repeat(4,1fr)}.half{grid-column:span 2}}@media(max-width:370px){.value{font-size:25px}.pill{font-size:9px}}
+</style></head>
+<body><main>
+<header class="top"><div class="brand"><img src="./icon.svg" alt=""><span>TRADING <span class="gold">AI</span></span></div><span class="pill">PAPER LAB · OFFLINE</span></header>
+<a href="./" class="linkback">‹ Назад към приложението</a>
+<h1>Gold Paper Lab</h1>
+<p>Изпробвай автоматично отваряне и затваряне на виртуални сделки върху XAUUSD с риск лимити. Работи директно в твоя iPhone.</p>
+<div class="banner"><b>Симулация, не реална търговия.</b> Цените са изкуствено генерирани, не са актуални котировки за злато. Сигналите са от примерен EMA алгоритъм — не от TradingAgents AI. Резултатите не прогнозират печалба и не доказват, че €100 са достатъчни при брокер.</div>
+<section class="panels" aria-label="Симулационен портфейл">
+<div class="card half"><span class="label">Виртуален баланс</span><div class="value" id="balance">€100.00</div><div class="small">Изходен капитал: €100</div></div>
+<div class="card half"><span class="label">Виртуална equity</span><div class="value" id="equity">€100.00</div><div id="pnl" class="small">P&L: €0.00</div></div>
+<div class="card half"><span class="label">Цена XAUUSD (изкуствена)</span><div class="value gold" id="price">—</div><div class="small">USD/oz • само демонстрация</div></div>
+<div class="card half"><span class="label">Автоматичен режим</span><div class="value" id="mode">STOP</div><div id="tick" class="small">0 изкуствени тика</div></div>
+</section>
+<section class="controls">
+<button id="start" type="button">▶ Start Paper</button>
+<button id="stop" type="button" class="danger">■ Stop</button>
+<button id="advance" type="button" class="secondary">Превърти 200 тика</button>
+<button id="reset" type="button" class="secondary">Нулирай €100</button>
+</section>
+<section class="card" aria-label="Пазарен графичен преглед"><div class="row"><h2>Симулирана цена</h2><span class="small" id="signal">Сигнал: —</span></div>
+<svg class="chart" viewBox="0 0 600 130" aria-label="Графика на изкуствената цена" role="img"><polyline id="line" points="" fill="none" stroke="#e5bc73" stroke-width="2.5" stroke-linejoin="round"/></svg>
+<p class="small">Графиката не е пазарна котировка. Стъпките се генерират локално и се записват на устройството.</p></section>
+<section class="panels" style="margin-top:12px">
+<div class="card half"><h2>Риск и защита</h2>
+<div class="stat"><span>Риск на позиция</span><b>0,25%</b></div>
+<div class="stat"><span>Дневен стоп (в симулацията)</span><b>1%</b></div>
+<div class="stat"><span>Едновременни позиции</span><b>1</b></div>
+<div class="stat"><span>Удвояване след загуба</span><b class="red">Забранено</b></div>
+<div class="stat"><span>Състояние</span><b id="riskStatus" class="green">OK</b></div></div>
+<div class="card half"><h2>Отворена виртуална позиция</h2><div id="openPos" class="small">Няма отворена позиция.</div>
+<p class="small">Разходи: илюстративен спред $0,28 и €0,02 комисиона на затворена позиция, допускане 1 USD = €0,90. Реалните брокерски стойности са различни.</p></div>
+</section>
+<section class="card" style="margin-top:12px"><div class="row"><h2>История на виртуалните сделки</h2><span id="total" class="small">0 сделки</span></div>
+<div style="overflow:auto"><table class="tbl"><thead><tr><th>Посока</th><th>Резултат</th><th>Причина</th><th>Тик</th></tr></thead><tbody id="trades"><tr><td colspan="4" class="small">Няма затворени виртуални сделки.</td></tr></tbody></table></div>
+<div class="actions"><button type="button" id="export" class="secondary">Експорт CSV</button><button type="button" id="close" class="secondary">Затвори позиция</button></div>
+</section>
+<footer>Състоянието се пази само в този браузър. Когато затвориш приложението, симулацията спира — това не е сървър, работещ 24/7. Няма достъп до брокер, депозити или реални поръчки. Преди реална търговия са необходими компилиран MT5 EA, брокерски тестове, анализ на разходите и проверка на минималния лот.</footer>
+</main>
+<script>
+(function(){
+"use strict";
+var KEY="trading_ai_gold_paper_v04", USD_TO_EUR=0.90, SPREAD=0.28, FEE=0.02, timer=null;
+function $(id){return document.getElementById(id)}
+function fresh(){return {balance:100,equity:100,price:4000,tick:0,running:false,halted:false,emaFast:4000,emaSlow:4000,prev:4000,seed:((Date.now()>>>0)^2654435769),points:[4000],position:null,history:[],lastTradeTick:-99,dayStart:100}}
+function num(x){return typeof x==="number"&&Number.isFinite(x)}
+function restore(){try{var t=JSON.parse(localStorage.getItem(KEY));if(t&&num(t.balance)&&num(t.price)&&num(t.tick)&&Array.isArray(t.history)&&Array.isArray(t.points)&&t.balance>=0&&t.history.length<=100&&t.points.length<=150&&t.tick>=0){t.running=false;return t}}catch(e){}return fresh()}
+var s=restore();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
+function euro(v){return (v<0?"−":"")+ "€"+Math.abs(v).toFixed(2)}
+function signed(v){return (v>=0?"+":"−")+"€"+Math.abs(v).toFixed(2)}
+function rng(){s.seed=(Math.imul(s.seed,1664525)+1013904223)>>>0;return s.seed/4294967296}
+function floating(){if(!s.position)return 0;return (s.price-s.position.entry)*s.position.side*s.position.qty*USD_TO_EUR - (s.position.qty*SPREAD*0.5*USD_TO_EUR)-FEE}
+function closePosition(reason){if(!s.position)return;var p=s.position, exit=s.price-p.side*SPREAD/2;var profit=(exit-p.entry)*p.side*p.qty*USD_TO_EUR-FEE;s.balance=Math.max(0,s.balance+profit);s.history.unshift({side:p.side,pnl:profit,reason:reason,tick:s.tick,entry:p.entry,exit:exit,qty:p.qty});s.history=s.history.slice(0,100);s.lastTradeTick=s.tick;s.position=null}
+function openPosition(dir){var risk=s.balance*0.0025;if(risk<=0.005)return;var entry=s.price+dir*SPREAD/2, stopDist=3.8, takeDist=5.8;var qty=(risk-FEE)/(USD_TO_EUR*(stopDist+SPREAD));if(qty<=0)return;s.position={side:dir,entry:entry,sl:entry-dir*stopDist,tp:entry+dir*takeDist,qty:qty,tick:s.tick}}
+function signal(){if(Math.abs(s.emaFast-s.emaSlow)<0.12)return 0;return s.emaFast>s.emaSlow?1:-1}
+function tickOne(){if(!s.running||s.halted)return;s.prev=s.price;s.tick++;
+var a=rng(),b=rng(), drift=Math.sin(s.tick/20)*0.38,shock=(a+b-1)*5.1;s.price=Math.max(50,s.price+drift+shock);
+s.emaFast=s.emaFast*(8/10)+s.price*(2/10);s.emaSlow=s.emaSlow*(20/22)+s.price*(2/22);
+s.points.push(s.price);if(s.points.length>100)s.points.shift();
+if(s.position){var p=s.position;if(p.side*(s.price-p.sl)<=0)closePosition("STOP");else if(p.side*(s.price-p.tp)>=0)closePosition("TARGET");else if(s.tick-p.tick>=90)closePosition("TIME")}
+s.equity=Math.max(0,s.balance+floating());
+if(s.equity<=s.dayStart*0.99){if(s.position)closePosition("RISK HALT");s.halted=true;s.running=false;s.equity=s.balance;stopTimer();return}
+if(!s.position&&s.tick-s.lastTradeTick>=12&&s.tick>=15){var dir=signal();if(dir)openPosition(dir)}
+s.equity=Math.max(0,s.balance+floating())}
+function stopTimer(){if(timer!==null){clearInterval(timer);timer=null}}
+function pause(){s.running=false;stopTimer();save();render()}
+function start(){if(s.halted)return;s.running=true;stopTimer();timer=setInterval(function(){for(var n=0;n<3;n++)tickOne();save();render()},950);save();render()}
+function step(){if(s.halted)return;var was=s.running;s.running=true;for(var i=0;i<200&&!s.halted;i++)tickOne();s.running=was&&!s.halted;save();render()}
+function render(){var pnl=s.equity-100; $("balance").textContent=euro(s.balance);$("equity").textContent=euro(s.equity);
+$("pnl").textContent="P&L: "+signed(pnl);$("pnl").className="small "+(pnl>0?"green":pnl<0?"red":"");
+$("price").textContent=s.price.toFixed(2);$("mode").textContent=s.halted?"HALT":s.running?"RUN":"STOP";$("mode").className="value "+(s.halted?"red":s.running?"green":"");
+$("tick").textContent=s.tick+" изкуствени тика";$("riskStatus").textContent=s.halted?"STOP: −1%":"OK";$("riskStatus").className=s.halted?"red":"green";
+$("start").disabled=s.running||s.halted;$("stop").disabled=!s.running;$("advance").disabled=s.halted;$("close").disabled=!s.position;
+$("signal").textContent="EMA посока: "+(signal()>0?"BUY":signal()<0?"SELL":"WAIT");
+if(s.position){var p=s.position;$("openPos").innerHTML="<b>"+(p.side>0?"BUY":"SELL")+"</b> · вход $"+p.entry.toFixed(2)+"<br>Stop $"+p.sl.toFixed(2)+" / Target $"+p.tp.toFixed(2)+"<br>Виртуален плаващ резултат: "+signed(floating());}
+else $("openPos").textContent="Няма отворена позиция.";
+var pts=s.points,lo=Math.min.apply(null,pts),hi=Math.max.apply(null,pts),w=Math.max(hi-lo,0.01);$("line").setAttribute("points",pts.map(function(v,i){return (pts.length<=1?300:i*600/(pts.length-1)).toFixed(1)+","+(115-(v-lo)/w*100).toFixed(1)}).join(" "));
+$("total").textContent=s.history.length+" сделки";
+$("trades").innerHTML=s.history.length?s.history.slice(0,20).map(function(t){return "<tr><td>"+(t.side>0?"BUY":"SELL")+"</td><td class='"+(t.pnl>=0?"green":"red")+"'>"+signed(t.pnl)+"</td><td>"+t.reason+"</td><td>"+t.tick+"</td></tr>"}).join(""):'<tr><td colspan="4" class="small">Няма затворени виртуални сделки.</td></tr>'}
+$("start").addEventListener("click",start);$("stop").addEventListener("click",pause);$("advance").addEventListener("click",step);
+$("close").addEventListener("click",function(){closePosition("MANUAL");s.equity=s.balance;save();render()});
+$("reset").addEventListener("click",function(){if(!confirm("Да нулирам ли цялата виртуална история и баланса обратно до €100?"))return;pause();s=fresh();save();render()});
+$("export").addEventListener("click",function(){var rows=["tick,side,entry,exit,virtual_quantity,pnl_eur,reason"].concat(s.history.map(function(t){return [t.tick,t.side>0?"BUY":"SELL",t.entry.toFixed(3),t.exit.toFixed(3),t.qty.toFixed(6),t.pnl.toFixed(4),t.reason].join(",")}));var b=new Blob([rows.join("\r\n")],{type:"text/csv;charset=utf-8"}),u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download="trading-ai-gold-paper-history.csv";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},2000)});
+document.addEventListener("visibilitychange",function(){if(document.hidden&&s.running)pause()});
+save();render();
+})();
+</script></body></html>
