@@ -67,7 +67,7 @@ class GatewayIntegrationTests(unittest.TestCase):
     def test_dashboard(self):
         code,body=self.send('/')
         self.assertEqual(code,200)
-        self.assertIn('TRADING AI',body)
+        self.assertIn('XAUUSD • GOLD FIRST',body)
 
 if __name__=='__main__':
     unittest.main()

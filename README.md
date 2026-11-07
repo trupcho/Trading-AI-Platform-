@@ -1,6 +1,12 @@
-# Trading AI Platform — v0.1 (DEMO ONLY)
+# Trading AI Platform — Gold-first v0.2 development branch (DEMO ONLY)
 
 **Status:** starter code; Python safety tests runnable; MT5 EA is SOURCE ONLY / NOT COMPILE-VERIFIED. No real-money trading, no unbounded auto-execution, no guaranteed profits.
+
+## Gold-first development additions (not a production release)
+
+- A responsive gold-first mobile web monitor served by the loopback Gateway (`/`). It shows only actual Demo heartbeats; no fake profitability. The broker onboarding/deposit links lead to the broker website, not a payment form.
+- A pure Python minimum-lot gold feasibility check (`trading_ai.gold_feasibility`) and regression tests. Assumptions are illustrative only; actual live trading requires MT5 broker-aware checks.
+- `docs/GOLD_LIVE_READINESS.md` records the acceptance gates for a possible €100 live pilot. **Do not deposit based on the prototype.**
 
 ## What this release actually does
 
@@ -69,11 +75,9 @@ py -m trading_ai.research --market XAUUSD --date 2026-11-06
 
 This requires separate installation of TradingAgents. Upstream financial data cannot be substituted for precise broker CFD quotes. This operation **only writes a research JSON** under `research_reports/`.
 
-## GitHub repository
+## GitHub
 
-The project source is maintained in GitHub at https://github.com/trupcho/Trading-AI-Platform- . At initial import, this repository is public. To make it private, go to **Settings > General > Danger Zone > Change repository visibility**. Do not store broker login details, personal financial data, or API secrets in GitHub.
-
-Python safety tests run in GitHub Actions on pushes and pull requests. MQL5 compilation and end-to-end MT5 Demo testing require a Windows MT5 installation; GitHub CI does **not** validate the EA compilation.
+Create a **private** GitHub repository `Trading-AI-Platform`. Extract ZIP; `git init`, `git add .`, `git commit -m "Initial demo-only Trading AI MVP"`, add your repository remote and push. The connector used in this session did not expose a create-repository action, so this release is delivered as an importable ZIP rather than claimed to be online.
 
 Do not ever commit `.env`, passwords, TradingAgents provider keys, broker login, or actual MT5 account details.
 
