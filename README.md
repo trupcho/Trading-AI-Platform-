@@ -1,5 +1,88 @@
-# Trading AI Platform
+# Trading AI Platform — v0.1 (DEMO ONLY)
 
-Demo-only starter repository. Source files and automated tests are being imported from the verified local v0.1 package.
+**Status:** starter code; Python safety tests runnable; MT5 EA is SOURCE ONLY / NOT COMPILE-VERIFIED. No real-money trading, no unbounded auto-execution, no guaranteed profits.
 
-**No real-money execution is enabled. Do not commit broker credentials or API keys.**
+## What this release actually does
+
+- **MT5 EA (MQL5)**: M1 EMA9/EMA21 crossover prototype with ATR stops, order sizing through MT5 `OrderCalcProfit()`/`OrderCalcMargin()`, maximum one total open position, daily equity-loss circuit breaker, spread filter, strict EUR/demo-only account guard, default orders OFF.
+- **Loopback gateway (Python standard library)**: token-protected short-lived directional policy (`HALT`, `BUY_ONLY`, `SELL_ONLY`, `BOTH`), authenticated EA heartbeat, simple local status page. Default `HALT` and no demo signal approvals until explicitly enabled.
+- **TradingAgents experiment**: optional `trading_ai.research` adapter invokes upstream `TradingAgentsGraph.propagate()` to save an *offline research report*. Its output cannot place orders or approve policies. GC=F and ^NDX are NOT executable XAUUSD/NAS100 prices.
+- **Unit tests**: risk sizing, daily stop, stale policy, symbol validation, loopback restriction.
+- **GitHub CI**: runs Python tests on each push/PR.
+
+## IMPORTANT exclusions / not yet built
+
+- No broker account, real funded balance, or external broker access.
+- No remote iPhone/desktop native app yet; only a local web monitor.
+- No automatic AI-to-policy promotion; v0.1 requires *manual approval*.
+- No latency-optimized order routing, production tick database, historical data vendor, verified P&L or validated profitability.
+- No historical multi-year broker backtesting completed; MQL5 is not compiled/verified in this environment.
+- No production secrets, public internet binding, multi-user auth, websocket streaming or remote server deployment.
+- XAUUSD and NAS100 are not universally the exact symbol names at brokers; choose each from Market Watch.
+
+## Start the gateway on the same Windows host as MT5 (Python 3.11+)
+
+PowerShell:
+
+```powershell
+cd Trading-AI-Platform-v0.1
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+$env:TRADING_AI_GATEWAY_KEY = (py -c "import secrets; print(secrets.token_urlsafe(32))")
+$env:TRADING_AI_ALLOW_DEMO_APPROVAL = '0'
+py -m trading_ai.gateway
+```
+
+Open http://127.0.0.1:8765 in browser. Supply the token from your shell, which you must also paste into EA input `InpGatewayKey` in MT5. The API and dashboard bind only to loopback, not the internet.
+
+Run safety tests:
+
+```powershell
+py -m unittest discover -s tests -v
+```
+
+To enable an explicitly authorized **manual demo directional policy** (not an order), stop gateway, set `TRADING_AI_ALLOW_DEMO_APPROVAL=1`, and restart. In a second PowerShell tab set **the same key** and call:
+
+```powershell
+py -m trading_ai.demo_cli --symbol XAUUSD --mode BUY_ONLY --ttl 300
+```
+
+Policy expires after at most 900 seconds, then EA returns to HALT. No live trading endpoint is implemented.
+
+## MT5 demo setup
+
+1. Open a free **Admirals Trade.MT5 Demo** account with EUR currency and **€500 virtual** starting balance, if this selectable. Confirm instrument availability and suitability in the selected EU entity; availability and server data can vary.
+2. Install Windows MetaTrader 5, log into Demo, and enable `XAUUSD` or broker's exact symbol in Market Watch. Open **M1 chart**.
+3. In MT5: File -> Open Data Folder -> `MQL5/Experts`; copy `mt5/Experts/TradingAI_DemoScalper.mq5` there. Open it in MetaEditor and **compile/test**. Do not deploy if any compiler errors remain.
+4. In MT5 Strategy Tester use **Every tick based on real ticks** when good historical data exists; choose initial deposit **€500**, EUR, realistic leverage/fees. For tester-only offline research set `InpTesterPolicy=TAI_BOTH`, set an empirically determined `InpMaxSpreadPoints`, then explicitly set `InpEnableDemoOrders=true` **in the tester only**.
+5. For forward Demo, whitelist `http://127.0.0.1:8765` under Tools -> Options -> Expert Advisors -> Allowed WebRequest URLs. Run Python gateway on the same Windows machine. Configure a token in EA. Keep `InpEnableDemoOrders=false` until compile, all risk tests and log checks pass. When enabling demo-only orders, TradingAI refuses real accounts by runtime check.
+6. First simulate a **daily-loss halt**, large spread, expired policy, disconnected gateway, minimum-lot rejection, server restart, no market data, and switching to a live account. All must fail closed.
+7. **Do not simply increase leverage or lot size** to make €500 XAUUSD trade. A zero-trade result under strict risk sizing is an expected valid result.
+
+## Optional TradingAgents experiment (offline)
+
+See `docs/AI_INTEGRATION.md`. The upstream framework has its own provider dependencies and API charges, and default config may require model API keys.
+
+```powershell
+py -m trading_ai.research --market XAUUSD --date 2026-11-06
+```
+
+This requires separate installation of TradingAgents. Upstream financial data cannot be substituted for precise broker CFD quotes. This operation **only writes a research JSON** under `research_reports/`.
+
+## GitHub repository
+
+The project source is maintained in GitHub at https://github.com/trupcho/Trading-AI-Platform- . At initial import, this repository is public. To make it private, go to **Settings > General > Danger Zone > Change repository visibility**. Do not store broker login details, personal financial data, or API secrets in GitHub.
+
+Python safety tests run in GitHub Actions on pushes and pull requests. MQL5 compilation and end-to-end MT5 Demo testing require a Windows MT5 installation; GitHub CI does **not** validate the EA compilation.
+
+Do not ever commit `.env`, passwords, TradingAgents provider keys, broker login, or actual MT5 account details.
+
+## Evidence and limitations
+
+- TradingAgents official repo: https://github.com/TauricResearch/TradingAgents
+- MQL5 trade robot docs: https://www.metatrader5.com/en/terminal/help/algotrading
+- MT5 Strategy Tester: https://www.metatrader5.com/en/terminal/help/algotrading/testing
+- MT5 WebRequest whitelist: https://www.metatrader5.com/en/terminal/help/startworking/settings
+- Admirals Demo: https://admiralmarkets.com/bg/start-trading/forex-demo
+
+**Disclaimer:** Research/prototype only. CFDs are leveraged and highly risky. Risk protections are best-effort, not guaranteed loss caps under price gaps/outages.
