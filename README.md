@@ -90,3 +90,13 @@ Do not ever commit `.env`, passwords, TradingAgents provider keys, broker login,
 - Admirals Demo: https://admiralmarkets.com/bg/start-trading/forex-demo
 
 **Disclaimer:** Research/prototype only. CFDs are leveraged and highly risky. Risk protections are best-effort, not guaranteed loss caps under price gaps/outages.
+
+
+## v0.5 — broker and TradingAgents readiness (read-only; no live orders)
+
+The user has accepted that a future €100 pilot can lose its full capital. That **does not** turn on live trading. The current product has no live brokerage connection or profitable-strategy validation. Two separate diagnostic commands are now provided:
+
+- `python -m trading_ai.mt5_readiness --symbol XAUUSD --stop-price-distance 5`: run on Windows with your OWN connected MT5 terminal to calculate min-lot margin and modeled stop-loss in EUR. Never sends orders, refuses unverified round-trip cost information and stale quotes. See [MT5 Readiness](docs/MT5_READINESS.md).
+- `python -m trading_ai.agent_bridge --report research_reports/XAUUSD_YYYY-MM-DD.json`: parses a TradingAgents research result into an **unapproved** BUY_ONLY / SELL_ONLY / HALT proposal. Ambiguous or stale AI research yields HALT. This is not an auto-execution route.
+
+**Do not deposit real money based on either command.** Live release still requires an approved broker account, secure account authorization, verified broker contract spec, real market strategy tests, compiled/reviewed EA, and explicit authorized order activation. The public GitHub Pages site is a demonstration and must never handle broker credentials.
