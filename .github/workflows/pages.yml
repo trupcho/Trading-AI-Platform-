@@ -1,7 +1,7 @@
 name: Publish Trading AI iPhone PWA
 on:
   push:
-    branches: [feature/iphone-pwa-v0.3]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
