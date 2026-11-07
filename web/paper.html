@@ -72,7 +72,7 @@ footer{margin:30px 0;color:var(--muted);font-size:12px;line-height:1.6}
 "use strict";
 var KEY="trading_ai_gold_paper_v04", USD_TO_EUR=0.90, SPREAD=0.28, FEE=0.02, timer=null;
 function $(id){return document.getElementById(id)}
-function fresh(){return {balance:100,equity:100,price:4000,tick:0,running:false,halted:false,emaFast:4000,emaSlow:4000,prev:4000,seed:245813,points:[4000],position:null,history:[],lastTradeTick:-99,dayStart:100}}
+function fresh(){return {balance:100,equity:100,price:4000,tick:0,running:false,halted:false,emaFast:4000,emaSlow:4000,prev:4000,seed:((Date.now()>>>0)^2654435769),points:[4000],position:null,history:[],lastTradeTick:-99,dayStart:100}}
 function num(x){return typeof x==="number"&&Number.isFinite(x)}
 function restore(){try{var t=JSON.parse(localStorage.getItem(KEY));if(t&&num(t.balance)&&num(t.price)&&num(t.tick)&&Array.isArray(t.history)&&Array.isArray(t.points)&&t.balance>=0&&t.history.length<=100&&t.points.length<=150&&t.tick>=0){t.running=false;return t}}catch(e){}return fresh()}
 var s=restore();
