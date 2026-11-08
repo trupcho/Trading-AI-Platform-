@@ -168,6 +168,17 @@ class ExecutionTests(TestCase):
         self.assertEqual(second["reason"],"DUPLICATE_INTENT_REQUIRES_RECONCILIATION")
         self.assertEqual(self.mt.send_count,1)
 
+    def test_distinct_concurrent_intent_blocked_until_reconciliation(self):
+        env={"TRADING_AI_KILL_SWITCH":"0",
+             "TRADING_AI_LIVE_ENABLED":"YES_I_ACCEPT_LIVE_RISK"}
+        with patch.dict(os.environ,env,clear=True):
+            first=submit_guarded(approved(key="pilot-2026-00000001"),**self.kw)
+            second=submit_guarded(approved(key="pilot-2026-00000002"),**self.kw)
+        self.assertTrue(first["sent"])
+        self.assertFalse(second["sent"])
+        self.assertEqual(second["reason"],"DUPLICATE_INTENT_REQUIRES_RECONCILIATION")
+        self.assertEqual(self.mt.send_count,1)
+
     def test_sell_stop_and_target(self):
         r=evaluate_mt5(approved(direction="SELL"),**self.kw)
         self.assertTrue(r["ok"])
