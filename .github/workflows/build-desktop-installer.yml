@@ -1,0 +1,81 @@
+name: Build Trading AI Desktop v0.8 for Windows
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop-source-v0.8.zip'
+      - '.github/workflows/build-desktop-installer.yml'
+  pull_request:
+    paths:
+      - 'desktop-source-v0.8.zip'
+      - '.github/workflows/build-desktop-installer.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  desktop-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract desktop source archive
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'desktop-source-v0.8.zip')) { throw 'Source ZIP not found' }
+          Expand-Archive -LiteralPath 'desktop-source-v0.8.zip' -DestinationPath 'desktop' -Force
+          if (-not (Test-Path 'desktop/run_desktop.py')) { throw 'Desktop entrypoint missing' }
+          if (-not (Test-Path 'desktop/installer/TradingAI.iss')) { throw 'Installer script missing' }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Install dependencies for Windows build
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-windows.txt pyinstaller
+        working-directory: desktop
+      - name: Test desktop engine and setup wizard
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+        working-directory: desktop
+      - name: Build standalone Windows executable
+        run: python -m PyInstaller --noconfirm --clean --onefile --windowed --name TradingAI-Desktop --hidden-import MetaTrader5 run_desktop.py
+        working-directory: desktop
+      - name: Validate built executable
+        shell: pwsh
+        run: |
+          $exe = 'desktop/dist/TradingAI-Desktop.exe'
+          if (-not (Test-Path $exe)) { throw 'Windows EXE missing' }
+          if ((Get-Item $exe).Length -lt 1048576) { throw 'EXE unexpectedly small' }
+          (Get-FileHash $exe -Algorithm SHA256).Hash
+      - name: Install Inno Setup builder
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+      - name: Package single Windows setup executable
+        shell: pwsh
+        working-directory: desktop
+        run: |
+          $iscc = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Inno Setup 6/ISCC.exe'
+          if (-not (Test-Path $iscc)) { throw 'Inno Setup compiler unavailable' }
+          & $iscc 'installer/TradingAI.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
+          if (-not (Test-Path 'dist/Trading_AI_Desktop_Setup_v0.8.exe')) { throw 'Installer not created' }
+      - name: Upload Windows installer as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trading-AI-Desktop-v0.8-Windows-Setup
+          path: desktop/dist/Trading_AI_Desktop_Setup_v0.8.exe
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish downloadable installer as GitHub release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $file = 'desktop/dist/Trading_AI_Desktop_Setup_v0.8.exe'
+          gh release view desktop-v0.8.0 *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload desktop-v0.8.0 $file --clobber
+          } else {
+            gh release create desktop-v0.8.0 $file --target $env:GITHUB_SHA --title 'Trading AI Desktop v0.8 — Windows Setup Wizard' --notes 'Windows installer with local MT5 setup wizard and demo-only trading checks. Requires separately installed MetaTrader 5 and broker demo account. Live orders are disabled; AI research is optional and needs provider configuration. This executable is not code-signed.'
+          }
