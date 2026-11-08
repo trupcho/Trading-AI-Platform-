@@ -1,0 +1,99 @@
+name: Build Trading AI Desktop v0.9 with TradingAgents
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop-source-v0.9.zip'
+      - '.github/workflows/build-desktop-v0.9.yml'
+  pull_request:
+    paths:
+      - 'desktop-source-v0.9.zip'
+      - '.github/workflows/build-desktop-v0.9.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract v0.9 application sources
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'desktop-source-v0.9.zip')) { throw 'v0.9 source ZIP missing' }
+          Expand-Archive -LiteralPath 'desktop-source-v0.9.zip' -DestinationPath 'desktop' -Force
+          if (-not (Test-Path 'desktop/run_desktop.py')) { throw 'Entrypoint missing' }
+          if (-not (Test-Path 'desktop/installer/TradingAI.iss')) { throw 'Installer config missing' }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Install original TradingAgents and MetaTrader5
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip wheel
+          python -m pip install -r requirements-windows.txt pyinstaller
+          python -c "from tradingagents.graph.trading_graph import TradingAgentsGraph; from tradingagents.llm_clients import chatgpt_auth; from tradingagents.default_config import DEFAULT_CONFIG; print('TradingAgents import OK; provider config has', DEFAULT_CONFIG['llm_provider'])"
+      - name: Run unit tests including TradingAgents wiring
+        working-directory: desktop
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Freeze complete Windows app with embedded TradingAgents
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onedir --windowed --name TradingAI-Desktop `
+            --hidden-import MetaTrader5 `
+            --collect-all tradingagents `
+            --collect-all cli `
+            --collect-submodules langchain_core `
+            --collect-submodules langchain_openai `
+            --collect-submodules langchain_anthropic `
+            --collect-submodules langchain_google_genai `
+            --collect-submodules langchain_experimental `
+            --collect-submodules langgraph `
+            --collect-submodules yfinance `
+            --copy-metadata tradingagents `
+            run_desktop.py
+      - name: Smoke-test Windows executable (not broker-connected)
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $exe = 'dist/TradingAI-Desktop/TradingAI-Desktop.exe'
+          if (-not (Test-Path $exe)) { throw 'Desktop EXE missing' }
+          $p = Start-Process -FilePath $exe -ArgumentList '--selftest' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Packaged TradingAgents selftest failed: exit=$($p.ExitCode)" }
+      - name: Install Inno Setup builder
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+      - name: Create one-file Windows Setup
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $iscc = Join-Path ([Environment]::GetFolderPath('ProgramFilesX86')) 'Inno Setup 6/ISCC.exe'
+          if (-not (Test-Path $iscc)) { throw 'Inno Setup compiler missing' }
+          & $iscc 'installer/TradingAI.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          if (-not (Test-Path 'dist/Trading_AI_Desktop_Setup_v0.9.exe')) { throw 'Installer missing' }
+      - name: Upload verified Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trading-AI-Desktop-v0.9-TradingAgents-Windows
+          path: desktop/dist/Trading_AI_Desktop_Setup_v0.9.exe
+          if-no-files-found: error
+          retention-days: 30
+      - name: Release installer only after successful tests and smoke test
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $file = 'desktop/dist/Trading_AI_Desktop_Setup_v0.9.exe'
+          gh release view desktop-v0.9.0 *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload desktop-v0.9.0 $file --clobber
+          } else {
+            gh release create desktop-v0.9.0 $file --target $env:GITHUB_SHA --title 'Trading AI Desktop v0.9 — TradingAgents ChatGPT integrated' --notes 'Bundled official TradingAgents v0.7.1 with browser-based ChatGPT subscription login; real MT5 demo market quote integration, risk limits and mandatory AI directional veto. Broker and ChatGPT logins are owner-only. REAL orders remain disabled. This unsigned build is not a validated profitable strategy.'
+          }
