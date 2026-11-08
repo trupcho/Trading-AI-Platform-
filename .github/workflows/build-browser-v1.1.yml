@@ -1,0 +1,117 @@
+name: Build Trading AI Browser v1.1 for Windows — verified OAuth
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'desktop-source-v1.1.zip'
+      - '.github/workflows/build-browser-v1.1.yml'
+  pull_request:
+    paths:
+      - 'desktop-source-v1.1.zip'
+      - '.github/workflows/build-browser-v1.1.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  portable-windows:
+    runs-on: windows-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack fixed browser edition
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'desktop-source-v1.1.zip')) { throw 'Source not found' }
+          Expand-Archive -LiteralPath 'desktop-source-v1.1.zip' -DestinationPath 'browser' -Force
+          if (-not (Test-Path 'browser/run_browser.py')) { throw 'Browser entrypoint missing' }
+          if (-not (Test-Path 'browser/trading_ai_desktop/browser_ui.html')) { throw 'Web UI missing' }
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Install bundled MT5 and official TradingAgents v0.7.1
+        working-directory: browser
+        run: |
+          python -m pip install --upgrade pip wheel
+          python -m pip install -r requirements-windows.txt pyinstaller
+          python -c "from tradingagents.graph.trading_graph import TradingAgentsGraph; from tradingagents.llm_clients import chatgpt_auth; from tradingagents.default_config import DEFAULT_CONFIG; print('TradingAgents imports OK')"
+      - name: Run regression tests for browser, AI isolation, demo protections
+        working-directory: browser
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Build one portable EXE (no installer and no Python installation)
+        working-directory: browser
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name Trading_AI_Browser_v1.1 `
+            --hidden-import MetaTrader5 `
+            --add-data "trading_ai_desktop/browser_ui.html;trading_ai_desktop" `
+            --collect-all tradingagents `
+            --collect-all cli `
+            --collect-submodules langchain_core `
+            --collect-submodules langchain_openai `
+            --collect-submodules langchain_anthropic `
+            --collect-submodules langchain_google_genai `
+            --collect-submodules langchain_experimental `
+            --collect-submodules langgraph `
+            --collect-submodules yfinance `
+            --copy-metadata tradingagents `
+            run_browser.py
+          if ($LASTEXITCODE -ne 0) { throw 'Portable packaging failed' }
+          if (-not (Test-Path 'dist/Trading_AI_Browser_v1.1.exe')) { throw 'EXE not generated' }
+          if ((Get-Item 'dist/Trading_AI_Browser_v1.1.exe').Length -lt 1048576) { throw 'EXE too small' }
+      - name: Verify packaged TradingAgents and embedded browser UI
+        working-directory: browser
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'dist/Trading_AI_Browser_v1.1.exe').Path
+          $p = Start-Process -FilePath $exe -ArgumentList '--selftest' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "EXE import/UI selftest failed: $($p.ExitCode)" }
+          Write-Host 'Embedded TradingAgents+browser resource selftest passed'
+      - name: Smoke-test local browser HTTP and security token
+        working-directory: browser
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'dist/Trading_AI_Browser_v1.1.exe').Path
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            $html = $null
+            for ($i = 0; $i -lt 65; $i++) {
+              Start-Sleep -Seconds 1
+              try {
+                $resp = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:8766/' -TimeoutSec 3
+                if ($resp.StatusCode -eq 200) { $html = $resp.Content; break }
+              } catch {}
+            }
+            if (-not $html -or $html -notmatch 'Trading AI') { throw 'Browser UI not served by packaged EXE' }
+            $m = [regex]::Match($html, "const TOKEN='([^']+)';")
+            if (-not $m.Success) { throw 'Session token injection missing' }
+            $status = Invoke-RestMethod -Uri 'http://127.0.0.1:8766/api/status' -Headers @{'X-Local-Token'=$m.Groups[1].Value} -TimeoutSec 10
+            if ($status.connected -ne $false) { throw 'Unexpected broker connection in clean CI runner' }
+            if ($status.auth_state -eq 'connected') { throw 'Falsely marked ChatGPT connected in clean runner' }
+            if ($html -notmatch 'aiAuthCheck') { throw 'Verify ChatGPT button missing in embedded UI' }
+            if ($status.running -ne $false) { throw 'Unexpected auto execution in clean CI runner' }
+            Write-Host 'Portable browser smoke passed: 127.0.0.1, token and orders OFF'
+          } finally {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          }
+      - name: Upload checked portable EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trading-AI-Browser-v1.1-Windows-Portable
+          path: browser/dist/Trading_AI_Browser_v1.1.exe
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish release after Windows validation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $file = 'browser/dist/Trading_AI_Browser_v1.1.exe'
+          gh release view browser-v1.1.0 *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload browser-v1.1.0 $file --clobber
+          } else {
+            gh release create browser-v1.1.0 $file --target $env:GITHUB_SHA --title 'Trading AI Browser v1.1 — Verified ChatGPT OAuth state and isolated MT5 demo' --notes 'No Windows installer required. Double-click portable EXE and use the local browser on 127.0.0.1:8766. Fix OAuth callback status: independently verify upstream persisted ChatGPT credential, show precise safe errors, add check-existing-session button, gate analyses and DEMO trading until verified. AI runs in a cancellable separate process; responsive and scrollable UI. DEMO orders require manual confirmation, broker risk checks and valid AI analysis. REAL orders remain disabled. Close v0.9 before starting v1.1. MT5 itself still needs to be installed and logged in. This software is not code-signed; no broker or ChatGPT credentials are bundled and no profitable strategy is asserted.'
+          }
