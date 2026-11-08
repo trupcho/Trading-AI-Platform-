@@ -179,6 +179,18 @@ class ExecutionTests(TestCase):
         self.assertEqual(second["reason"],"DUPLICATE_INTENT_REQUIRES_RECONCILIATION")
         self.assertEqual(self.mt.send_count,1)
 
+    def test_custom_policy_cannot_exceed_pilot_risk_ceiling(self):
+        self.kw["policy"]=PilotPolicy(risk_fraction=Decimal(".05"))
+        self.assertEqual(evaluate_mt5(approved(),**self.kw)["reason"],"UNSAFE_RISK_POLICY")
+
+    def test_custom_margin_policy_cannot_exceed_ceiling(self):
+        self.kw["policy"]=PilotPolicy(margin_fraction=Decimal(".8"))
+        self.assertEqual(evaluate_mt5(approved(),**self.kw)["reason"],"UNSAFE_RISK_POLICY")
+
+    def test_non_finite_stop_rejected(self):
+        i=Intent("pilot-2026-00000001","XAUUSD","BUY",Decimal("NaN"),Decimal(8),1100,True)
+        self.assertEqual(evaluate_mt5(i,**self.kw)["reason"],"NON_FINITE_BROKER_DATA")
+
     def test_sell_stop_and_target(self):
         r=evaluate_mt5(approved(direction="SELL"),**self.kw)
         self.assertTrue(r["ok"])
