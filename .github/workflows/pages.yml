@@ -38,6 +38,23 @@ jobs:
             sleep 10
           done
           echo "0aece62c9ca83c512f7e864ca09bb5095c89ebe1a66625c2c270db0b38cd516e  web/downloads/Trading_AI_Browser_v1.0.exe" | sha256sum --check
+      - name: Publish verified ChatGPT OAuth fix v1.1 download
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p web/downloads
+          for attempt in 1 2 3 4; do
+            if gh release download browser-v1.1.0 --repo "$GITHUB_REPOSITORY" --pattern 'Trading_AI_Browser_v1.1.exe' --dir web/downloads --clobber; then
+              break
+            fi
+            if [ "$attempt" = 4 ]; then
+              echo 'Could not retrieve browser-v1.1.0 asset' >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "b4e09b0d4cfbb41ee634d08f93272adc1d5f92ab43fdb621ee3af9da9a3282cc  web/downloads/Trading_AI_Browser_v1.1.exe" | sha256sum --check
       - name: Upload PWA
         uses: actions/upload-pages-artifact@v3
         with:
