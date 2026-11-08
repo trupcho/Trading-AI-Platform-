@@ -61,11 +61,11 @@ jobs:
       - name: Download verified Windows build from this run
         uses: actions/download-artifact@v4
         with:
-          name: Trading-AI-Browser-v1.1.1-Windows-Portable
+          name: Trading-AI-Browser-v1.1.2-Windows-Portable
           path: web/downloads
       - name: Verify Windows artifact checksum
         working-directory: web/downloads
-        run: sha256sum --check Trading_AI_Browser_v1.1.1.exe.sha256
+        run: sha256sum --check Trading_AI_Browser_v1.1.2.exe.sha256
       - name: Upload PWA
         uses: actions/upload-pages-artifact@v3
         with:
@@ -77,7 +77,7 @@ jobs:
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
-          name=Trading_AI_Browser_v1.1.1.exe
+          name=Trading_AI_Browser_v1.1.2.exe
           cd "${RUNNER_TEMP}"
           curl --fail --silent --show-error --location --retry 8 --retry-all-errors --max-time 120             "${PAGE_URL%/}/downloads/$name?build=${GITHUB_RUN_ID}" --output "$name"
           sha256sum --check "$GITHUB_WORKSPACE/web/downloads/$name.sha256"

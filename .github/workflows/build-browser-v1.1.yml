@@ -1,4 +1,4 @@
-name: Build Trading AI Browser v1.1.1 for Windows
+name: Build Trading AI Browser v1.1.2 for Windows
 on:
   workflow_call:
   workflow_dispatch:
@@ -40,7 +40,7 @@ jobs:
         working-directory: browser
         shell: pwsh
         run: |
-          python -m PyInstaller --noconfirm --clean --onefile --windowed --name Trading_AI_Browser_v1.1.1 `
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name Trading_AI_Browser_v1.1.2 `
             --hidden-import MetaTrader5 `
             --add-data "trading_ai_desktop/browser_ui.html;trading_ai_desktop" `
             --collect-all tradingagents `
@@ -54,13 +54,13 @@ jobs:
             --copy-metadata tradingagents `
             run_browser.py
           if ($LASTEXITCODE -ne 0) { throw 'Portable packaging failed' }
-          if (-not (Test-Path 'dist/Trading_AI_Browser_v1.1.1.exe')) { throw 'EXE not generated' }
-          if ((Get-Item 'dist/Trading_AI_Browser_v1.1.1.exe').Length -lt 1048576) { throw 'EXE too small' }
+          if (-not (Test-Path 'dist/Trading_AI_Browser_v1.1.2.exe')) { throw 'EXE not generated' }
+          if ((Get-Item 'dist/Trading_AI_Browser_v1.1.2.exe').Length -lt 1048576) { throw 'EXE too small' }
       - name: Verify packaged TradingAgents and embedded browser UI
         working-directory: browser
         shell: pwsh
         run: |
-          $exe = (Resolve-Path 'dist/Trading_AI_Browser_v1.1.1.exe').Path
+          $exe = (Resolve-Path 'dist/Trading_AI_Browser_v1.1.2.exe').Path
           $p = Start-Process -FilePath $exe -ArgumentList '--selftest' -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "EXE import/UI selftest failed: $($p.ExitCode)" }
           Write-Host 'Embedded TradingAgents+browser resource selftest passed'
@@ -68,7 +68,7 @@ jobs:
         working-directory: browser
         shell: pwsh
         run: |
-          $exe = (Resolve-Path 'dist/Trading_AI_Browser_v1.1.1.exe').Path
+          $exe = (Resolve-Path 'dist/Trading_AI_Browser_v1.1.2.exe').Path
           $p = Start-Process -FilePath $exe -PassThru
           try {
             $html = $null
@@ -96,15 +96,15 @@ jobs:
         working-directory: browser/dist
         shell: pwsh
         run: |
-          $name = 'Trading_AI_Browser_v1.1.1.exe'
+          $name = 'Trading_AI_Browser_v1.1.2.exe'
           $hash = (Get-FileHash $name -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $name" | Set-Content -Encoding ascii "$name.sha256"
       - name: Upload checked portable EXE
         uses: actions/upload-artifact@v4
         with:
-          name: Trading-AI-Browser-v1.1.1-Windows-Portable
+          name: Trading-AI-Browser-v1.1.2-Windows-Portable
           path: |
-            browser/dist/Trading_AI_Browser_v1.1.1.exe
-            browser/dist/Trading_AI_Browser_v1.1.1.exe.sha256
+            browser/dist/Trading_AI_Browser_v1.1.2.exe
+            browser/dist/Trading_AI_Browser_v1.1.2.exe.sha256
           retention-days: 30
           if-no-files-found: error
