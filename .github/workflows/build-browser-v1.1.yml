@@ -87,7 +87,9 @@ jobs:
             $m = [regex]::Match($html, "const TOKEN='([^']+)';")
             if (-not $m.Success) { throw 'Session token injection missing' }
             $status = Invoke-RestMethod -Uri 'http://127.0.0.1:8766/api/status' -Headers @{'X-Local-Token'=$m.Groups[1].Value} -TimeoutSec 10
-            if ($status.connected -ne $false) { throw 'Unexpected broker connection in clean CI runner' }\n            if ($status.auth_state -eq 'connected') { throw 'Falsely marked ChatGPT connected in clean runner' }\n            if ($html -notmatch 'aiAuthCheck') { throw 'Verify ChatGPT button missing in embedded UI' }
+            if ($status.connected -ne $false) { throw 'Unexpected broker connection in clean CI runner' }
+            if ($status.auth_state -eq 'connected') { throw 'Falsely marked ChatGPT connected in clean runner' }
+            if ($html -notmatch 'aiAuthCheck') { throw 'Verify ChatGPT button missing in embedded UI' }
             if ($status.running -ne $false) { throw 'Unexpected auto execution in clean CI runner' }
             Write-Host 'Portable browser smoke passed: 127.0.0.1, token and orders OFF'
           } finally {
