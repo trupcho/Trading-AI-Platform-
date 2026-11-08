@@ -21,6 +21,23 @@ jobs:
         uses: actions/checkout@v4
       - name: Configure Pages
         uses: actions/configure-pages@v5
+      - name: Publish verified Windows download with PWA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p web/downloads
+          for attempt in 1 2 3 4; do
+            if gh release download browser-v1.0.0 --repo "$GITHUB_REPOSITORY" --pattern 'Trading_AI_Browser_v1.0.exe' --dir web/downloads --clobber; then
+              break
+            fi
+            if [ "$attempt" = 4 ]; then
+              echo 'Could not retrieve browser-v1.0.0 asset' >&2
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "0aece62c9ca83c512f7e864ca09bb5095c89ebe1a66625c2c270db0b38cd516e  web/downloads/Trading_AI_Browser_v1.0.exe" | sha256sum --check
       - name: Upload PWA
         uses: actions/upload-pages-artifact@v3
         with:
