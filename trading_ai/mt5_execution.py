@@ -213,6 +213,8 @@ def evaluate_mt5(intent: Intent, *, mt5: Any, ledger: Ledger, policy: PilotPolic
         if bid <= 0 or ask <= bid:
             return {"ok": False, "reason": "INVALID_QUOTE"}
         volume = D(info.volume_min)
+        if not D(intent.stop_distance).is_finite() or not D(intent.target_distance).is_finite():
+            return {"ok": False, "reason": "NON_FINITE_BROKER_DATA"}
         is_buy = intent.direction == "BUY"
         side = mt5.ORDER_TYPE_BUY if is_buy else mt5.ORDER_TYPE_SELL
         entry = ask if is_buy else bid
