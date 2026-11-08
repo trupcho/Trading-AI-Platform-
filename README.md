@@ -100,3 +100,12 @@ The user has accepted that a future €100 pilot can lose its full capital. That
 - `python -m trading_ai.agent_bridge --report research_reports/XAUUSD_YYYY-MM-DD.json`: parses a TradingAgents research result into an **unapproved** BUY_ONLY / SELL_ONLY / HALT proposal. Ambiguous or stale AI research yields HALT. This is not an auto-execution route.
 
 **Do not deposit real money based on either command.** Live release still requires an approved broker account, secure account authorization, verified broker contract spec, real market strategy tests, compiled/reviewed EA, and explicit authorized order activation. The public GitHub Pages site is a demonstration and must never handle broker credentials.
+
+
+## v0.6: Protected MT5 execution module (NOT LIVE-READY)
+
+The \`trading_ai.mt5_execution\` module adds an **optional, single-owner execution adapter** whose live order path is disabled by default. It requires a verified allowlisted account and server, recent human authorization, no positions or pending orders, fresh quotes, broker \`order_calc_profit\` / \`order_calc_margin\` / \`order_check\`, attached Stop Loss and Take Profit, low risk limits, a persistent daily baseline and an idempotency ledger. Unknown broker responses are never automatically retried.
+
+**The module is not wired to the live iPhone web app, is not an active broker service, and has not been compiled or tested in the actual MT5 terminal.** The public PWA remains information-only with a synthetic paper lab. The AI bridge still only produces unapproved research proposals. There is no secure signup/deposit or broker authentication system.
+
+Read [Real-money release checklist](docs/REAL_MONEY_RELEASE.md) for the full gate list. Registration and money transfers can only occur through a regulated broker directly. **No real trading is enabled or verified, and profitability has not been demonstrated.**
