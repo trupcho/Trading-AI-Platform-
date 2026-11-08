@@ -65,7 +65,19 @@ def guard_snapshot(*, intent: Intent, policy: PilotPolicy, equity: Any,
         return "NO_FRESH_OWNER_APPROVAL"
     if account_mode not in ("DEMO", "REAL") or account_currency != "EUR":
         return "UNSUPPORTED_ACCOUNT"
-    if policy.max_positions != 1 or positions != 0 or pending_orders != 0:
+    # Pilot risk policy is a hard ceiling, never an adjustable shortcut.
+    try:
+        if (policy.max_positions != 1 or
+            not Decimal("0") < policy.risk_fraction <= Decimal("0.0025") or
+            not Decimal("0") < policy.daily_loss_fraction <= Decimal("0.01") or
+            not Decimal("0") < policy.margin_fraction <= Decimal("0.35") or
+            not Decimal("0") < policy.capital_ceiling_eur <= Decimal("100") or
+            not Decimal("0") < policy.max_spread_price <= Decimal("0.5") or
+            not 0 < policy.max_tick_age_seconds <= 5):
+            return "UNSAFE_RISK_POLICY"
+    except (InvalidOperation, ValueError, TypeError):
+        return "UNSAFE_RISK_POLICY"
+    if positions != 0 or pending_orders != 0:
         return "EXPOSURE_NOT_EMPTY"
     try:
         eq, base, volume, vol_step, marg, loss, costs, spr, min_stop, tick_age = [
@@ -77,6 +89,8 @@ def guard_snapshot(*, intent: Intent, policy: PilotPolicy, equity: Any,
                                            loss, costs, spr, min_stop, tick_age)):
             return "NON_FINITE_BROKER_DATA"
         sd, td = D(intent.stop_distance), D(intent.target_distance)
+        if not sd.is_finite() or not td.is_finite():
+            return "NON_FINITE_BROKER_DATA"
     except (InvalidOperation, TypeError, ValueError, OverflowError):
         return "INVALID_BROKER_DATA"
     if eq <= 0 or base <= 0 or volume <= 0 or vol_step <= 0 or marg <= 0 or loss < 0 or costs <= 0 or spr <= 0:
