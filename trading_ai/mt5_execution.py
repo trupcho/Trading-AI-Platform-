@@ -9,7 +9,8 @@ and broker-specific verification. No automated AI approval is accepted here.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
+from contextlib import closing
 from decimal import Decimal, InvalidOperation, ROUND_FLOOR, ROUND_CEILING
 import os
 from pathlib import Path
@@ -118,7 +119,7 @@ class Ledger:
         return db
 
     def baseline(self, account_id: str, day: str, current_equity: Any) -> Decimal:
-        with self._db() as db:
+        with closing(self._db()) as db:
             db.execute("BEGIN IMMEDIATE")
             db.execute("INSERT OR IGNORE INTO baselines VALUES (?,?,?)",
                        (account_id, day, str(current_equity)))
@@ -128,8 +129,17 @@ class Ledger:
             return D(v)
 
     def reserve(self, key: str, account_id: str, now: int) -> bool:
-        with self._db() as db:
+        with closing(self._db()) as db:
             db.execute("BEGIN IMMEDIATE")
+            # Block any second pending or sent order on this account, even when
+            # intent identifiers differ. Human/broker reconciliation required.
+            existing = db.execute(
+                "SELECT 1 FROM submissions WHERE account_id=? "
+                "AND status IN ('PENDING','SENT') LIMIT 1", (account_id,)
+            ).fetchone()
+            if existing:
+                db.execute("ROLLBACK")
+                return False
             try:
                 db.execute("INSERT INTO submissions VALUES (?,?,?,?,?)",
                            (key, account_id, "PENDING", "may have reached broker", now))
@@ -140,7 +150,7 @@ class Ledger:
                 return False
 
     def finalize(self, key: str, status: str, detail: str):
-        with self._db() as db:
+        with closing(self._db()) as db:
             db.execute("UPDATE submissions SET status=?, detail=? WHERE id=?",
                        (status, detail[:200], key))
 
