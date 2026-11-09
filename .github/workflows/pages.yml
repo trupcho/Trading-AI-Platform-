@@ -13,8 +13,10 @@ concurrency:
 jobs:
   build-windows:
     uses: ./.github/workflows/build-browser-v1.1.yml
+  build-solana:
+    uses: ./.github/workflows/build-solana-paper.yml
   deploy:
-    needs: build-windows
+    needs: [build-windows, build-solana]
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -66,6 +68,14 @@ jobs:
       - name: Verify Windows artifact checksum
         working-directory: web/downloads
         run: sha256sum --check Trading_AI_Browser_v1.1.2.exe.sha256
+      - name: Download checked Solana PAPER Windows build
+        uses: actions/download-artifact@v4
+        with:
+          name: Trading-AI-Solana-Paper-v0.1-Windows
+          path: web/downloads
+      - name: Verify Solana PAPER exe against build artifact checksum
+        working-directory: web/downloads
+        run: sha256sum --check Trading_AI_Solana_Paper_v0.1.exe.sha256
       - name: Upload PWA
         uses: actions/upload-pages-artifact@v3
         with:
@@ -80,4 +90,12 @@ jobs:
           name=Trading_AI_Browser_v1.1.2.exe
           cd "${RUNNER_TEMP}"
           curl --fail --silent --show-error --location --retry 8 --retry-all-errors --max-time 120             "${PAGE_URL%/}/downloads/$name?build=${GITHUB_RUN_ID}" --output "$name"
+          sha256sum --check "$GITHUB_WORKSPACE/web/downloads/$name.sha256"
+      - name: Verify public Solana Windows EXE download byte for byte
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          name=Trading_AI_Solana_Paper_v0.1.exe
+          cd "${RUNNER_TEMP}"
+          curl --fail --silent --show-error --location --retry 6 --retry-all-errors --max-time 120 "${PAGE_URL%/}/downloads/$name?build=${GITHUB_RUN_ID}" --output "$name"
           sha256sum --check "$GITHUB_WORKSPACE/web/downloads/$name.sha256"

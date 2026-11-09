@@ -9,6 +9,7 @@ on:
       - 'solana-paper-source-v0.1.zip'
       - '.github/workflows/build-solana-paper.yml'
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: write
 jobs:
@@ -66,11 +67,20 @@ jobs:
           } finally {
             Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
           }
+      - name: Generate SHA256 manifest
+        working-directory: solana-paper
+        shell: pwsh
+        run: |
+          $file='dist/Trading_AI_Solana_Paper_v0.1.exe'
+          $hash=(Get-FileHash $file -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  Trading_AI_Solana_Paper_v0.1.exe" | Out-File 'dist/Trading_AI_Solana_Paper_v0.1.exe.sha256' -Encoding ascii
       - name: Upload tested Windows EXE
         uses: actions/upload-artifact@v4
         with:
           name: Trading-AI-Solana-Paper-v0.1-Windows
-          path: solana-paper/dist/Trading_AI_Solana_Paper_v0.1.exe
+          path: |
+            solana-paper/dist/Trading_AI_Solana_Paper_v0.1.exe
+            solana-paper/dist/Trading_AI_Solana_Paper_v0.1.exe.sha256
           retention-days: 30
           if-no-files-found: error
       - name: Publish official release after tests
