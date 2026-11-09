@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
   workflow_call:
 permissions:
-  contents: write
+  contents: read
 jobs:
   windows:
     runs-on: windows-latest
@@ -83,16 +83,3 @@ jobs:
             solana-paper/dist/Trading_AI_Solana_Paper_v0.1.exe.sha256
           retention-days: 30
           if-no-files-found: error
-      - name: Publish official release after tests
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $file='solana-paper/dist/Trading_AI_Solana_Paper_v0.1.exe'
-          gh release view solana-paper-v0.1.0 *> $null
-          if ($LASTEXITCODE -eq 0) {
-            gh release upload solana-paper-v0.1.0 $file --clobber
-          } else {
-            gh release create solana-paper-v0.1.0 $file --target $env:GITHUB_SHA --title 'Trading AI Solana Memecoin Desk v0.1 — PAPER ONLY' --notes 'No wallet, no transactions. DexScreener snapshot sampling. Optional GMGN CLI security provider, unknown data FAIL CLOSED. Up to 8% virtual capital per trade, paper stops and trailing, local UI & SQLite logs. No claimed alpha or live trading.'
-          }
