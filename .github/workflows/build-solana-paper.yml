@@ -1,0 +1,88 @@
+name: Build Solana PAPER Desk Windows portable
+on:
+  push:
+    paths:
+      - 'solana-paper-source-v0.1.zip'
+      - '.github/workflows/build-solana-paper.yml'
+  pull_request:
+    paths:
+      - 'solana-paper-source-v0.1.zip'
+      - '.github/workflows/build-solana-paper.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: x64
+      - name: Extract sources
+        shell: pwsh
+        run: |
+          Expand-Archive -LiteralPath 'solana-paper-source-v0.1.zip' -DestinationPath 'solana-paper' -Force
+          if (-not (Test-Path 'solana-paper/launch.py')) { throw 'Missing launcher' }
+      - name: Test security and paper risk
+        working-directory: solana-paper
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Install PyInstaller
+        run: python -m pip install pyinstaller==6.16.0
+      - name: Build Windows EXE
+        working-directory: solana-paper
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --console --name Trading_AI_Solana_Paper_v0.1 `
+            --add-data "solana_desk/index.html;solana_desk" launch.py
+          if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed' }
+          if (-not (Test-Path 'dist/Trading_AI_Solana_Paper_v0.1.exe')) { throw 'Missing EXE' }
+      - name: Packaged selftest and loopback smoke
+        working-directory: solana-paper
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path 'dist/Trading_AI_Solana_Paper_v0.1.exe').Path
+          $p = Start-Process -FilePath $exe -ArgumentList '--selftest' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Selftest failed: $($p.ExitCode)" }
+          $p = Start-Process -FilePath $exe -PassThru
+          try {
+            $html = $null
+            for ($i=0; $i -lt 30; $i++) {
+              Start-Sleep -Seconds 1
+              try {
+                $r = Invoke-WebRequest -Uri 'http://127.0.0.1:8777/' -UseBasicParsing -TimeoutSec 2
+                if ($r.StatusCode -eq 200) { $html=$r.Content; break }
+              } catch {}
+            }
+            if (-not $html -or $html -notmatch 'PAPER ONLY') { throw 'PAPER dashboard inaccessible' }
+            $m = [regex]::Match($html, "const TOKEN='([^']+)';")
+            if (-not $m.Success) { throw 'Local session token missing' }
+            $status = Invoke-RestMethod -Uri 'http://127.0.0.1:8777/api/status' -Headers @{'X-Paper-Token'=$m.Groups[1].Value} -TimeoutSec 5
+            if ($status.mode -ne 'PAPER_ONLY' -or $status.running -ne $false) { throw 'Unexpected live mode' }
+            if ($status.positions -ne 0 -or $status.cash -ne 100) { throw 'Unexpected paper balance' }
+            Write-Host 'No wallet, no network writes, local paper UI is ready.'
+          } finally {
+            Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          }
+      - name: Upload tested Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: Trading-AI-Solana-Paper-v0.1-Windows
+          path: solana-paper/dist/Trading_AI_Solana_Paper_v0.1.exe
+          retention-days: 30
+          if-no-files-found: error
+      - name: Publish official release after tests
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $file='solana-paper/dist/Trading_AI_Solana_Paper_v0.1.exe'
+          gh release view solana-paper-v0.1.0 *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload solana-paper-v0.1.0 $file --clobber
+          } else {
+            gh release create solana-paper-v0.1.0 $file --target $env:GITHUB_SHA --title 'Trading AI Solana Memecoin Desk v0.1 — PAPER ONLY' --notes 'No wallet, no transactions. DexScreener snapshot sampling. Optional GMGN CLI security provider, unknown data FAIL CLOSED. Up to 8% virtual capital per trade, paper stops and trailing, local UI & SQLite logs. No claimed alpha or live trading.'
+          }
